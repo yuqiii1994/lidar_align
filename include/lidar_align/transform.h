@@ -5,6 +5,9 @@
 
 namespace lidar_align {
 
+// this class is a homogeneous transformation matrix, is used in this project
+// to describe at each timestamp when a cloud point is registered, how odom
+// has changed.
 class Transform {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

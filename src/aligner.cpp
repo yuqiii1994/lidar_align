@@ -96,11 +96,13 @@ float Aligner::lidarOdomKNNError(const Pointcloud& base_pointcloud,
 }
 
 float Aligner::lidarOdomKNNError(const Lidar& lidar) const {
-  Pointcloud pointcloud;
+  Pointcloud pointcloud; // new tmp pointcloud
   lidar.getCombinedPointcloud(&pointcloud);
   return lidarOdomKNNError(pointcloud, pointcloud);
 }
 
+// x to be optimized for min
+// x[6] : time_offset
 double Aligner::LidarOdomMinimizer(const std::vector<double>& x,
                                    std::vector<double>& grad, void* f_data) {
   OptData* d = static_cast<OptData*>(f_data);
@@ -112,6 +114,7 @@ double Aligner::LidarOdomMinimizer(const std::vector<double>& x,
   Eigen::Matrix<double, 6, 1> vec;
   vec.setZero();
 
+  // pass x's values to vec by offset
   const size_t offset = x.size() == 3 ? 3 : 0;
   for (size_t i = offset; i < 6; ++i) {
     vec[i] = x[i - offset];
@@ -141,13 +144,27 @@ double Aligner::LidarOdomMinimizer(const std::vector<double>& x,
   return error;
 }
 
+/*
+  optimize is to find optimal x (a homogeneous transformation matrix for lidar) that
+  minimize the error, which is comprised of sampled cloud points' nearest neighbour
+  distances.
+  The theory is that, for highly converged cloud points that collectively construct
+  semantic real-world object/environment, the neighbors of each cloud point should
+  stay close that lead to small errors, while for non-converged cloud points, the 
+  error derived from cloud points' distance would be large
+*/
 void Aligner::optimize(const std::vector<double>& lb,
                        const std::vector<double>& ub, OptData* opt_data,
                        std::vector<double>* x) {
   nlopt::opt opt;
   if (config_.local) {
+    // BOBYQA performs derivative-free bound-constrained optimization using 
+    // an iteratively constructed quadratic approximation for the objective function.
+    // http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf
     opt = nlopt::opt(nlopt::LN_BOBYQA, x->size());
   } else {
+    // DIRECT is the DIviding RECTangles algorithm for global optimization
+    // https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#direct-and-direct-l
     opt = nlopt::opt(nlopt::GN_DIRECT_L, x->size());
   }
 
@@ -157,10 +174,12 @@ void Aligner::optimize(const std::vector<double>& lb,
   opt.set_maxeval(config_.max_evals);
   opt.set_xtol_abs(config_.xtol);
 
+  // opt_data is used to pass the contained info
+  // into LidarOdomMinimizer
   opt.set_min_objective(LidarOdomMinimizer, opt_data);
 
   double minf;
-  std::vector<double> grad;
+  std::vector<double> grad; // gradient
   nlopt::result result = opt.optimize(*x, minf);
   LidarOdomMinimizer(*x, grad, opt_data);
 }
@@ -225,6 +244,9 @@ std::string Aligner::generateCalibrationString(const Transform& T,
 }
 
 void Aligner::lidarOdomTransform(Lidar* lidar, Odom* odom) {
+  // about documentations
+  // https://nlopt.readthedocs.io/en/latest/NLopt_Tutorial/#example-nonlinearly-constrained-problem
+
   OptData opt_data;
   opt_data.lidar = lidar;
   opt_data.odom = odom;
@@ -241,8 +263,8 @@ void Aligner::lidarOdomTransform(Lidar* lidar, Odom* odom) {
   if (!config_.local) {
     ROS_INFO("Performing Global Optimization...                             ");
 
-    std::vector<double> lb = {-M_PI, -M_PI, -M_PI};
-    std::vector<double> ub = {M_PI, M_PI, M_PI};
+    std::vector<double> lb = {-M_PI, -M_PI, -M_PI}; // lower bound
+    std::vector<double> ub = {M_PI, M_PI, M_PI}; // upper bound
 
     std::vector<double> global_x(3, 0.0);
     optimize(lb, ub, &opt_data, &global_x);

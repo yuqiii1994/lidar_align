@@ -1,5 +1,9 @@
 # lidar_align
 
+## Added after fork
+
+1. added detailed comments for tutorial purposes
+
 ## A simple method for finding the extrinsic calibration between a 3D lidar and a 6-dof pose sensor
 
 **Note: Accurate results require highly non-planar motions, this makes the technique poorly suited for calibrating sensors mounted to cars.**

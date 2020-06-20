@@ -107,7 +107,7 @@ Scan::Config Scan::getConfig(ros::NodeHandle* nh) {
 
 void Scan::setOdomTransform(const Odom& odom, const double time_offset,
                             const size_t start_idx, size_t* match_idx) {
-  T_o0_ot_.clear();
+  T_o0_ot_.clear(); // homo trans mat for each scan
 
   size_t i = 0;
   for (Point point : raw_points_) {
@@ -137,7 +137,8 @@ const Transform& Scan::getOdomTransform() const {
 void Scan::getTimeAlignedPointcloud(const Transform& T_o_l,
                                     Pointcloud* pointcloud) const {
   for (size_t i = 0; i < raw_points_.size(); ++i) {
-    Transform T_o_lt = T_o0_ot_[i] * T_o_l;
+    // the current point homo trans matrix times the lidar system proposed adjustment matrix
+    Transform T_o_lt = T_o0_ot_[i] * T_o_l; 
 
     Eigen::Affine3f pcl_transform;
 
@@ -167,6 +168,7 @@ void Lidar::addPointcloud(const LoaderPointcloud& pointcloud,
   scans_.emplace_back(pointcloud, config);
 }
 
+// pointcloud is for all scans
 void Lidar::getCombinedPointcloud(Pointcloud* pointcloud) const {
   for (const Scan& scan : scans_) {
     scan.getTimeAlignedPointcloud(getOdomLidarTransform(), pointcloud);
