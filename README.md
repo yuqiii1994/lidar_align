@@ -2,7 +2,29 @@
 
 ## Added after fork
 
-1. added detailed comments for tutorial purposes
+Added detailed comments for tutorial purposes
+
+### Code and Algo Explained
+
+As shown in the given figure below, &Eta; denotes a transform matrix (translation plus rotation) that describes how a radar can be mapped to the centroid of this vehicle. &Tau;<sub>odom</sub> = {&Tau;<sub>odom<sub>1</sub></sub>, &Tau;<sub>odom<sub>2</sub></sub>, ..., &Tau;<sub>odom<sub>n</sub></sub>} is a set of odom transforms that serve as priors. Scanned point clouds pt = {pt<sub>1</sub>, pt<sub>2</sub>, ..., pt<sub>n</sub>} are concatenated (operator denoted as &oplus;) for &Tau;<sub>odom</sub>. Points in a scan  are linearly interpolated by odom. The mapped point clouds to real world objects are aligned by the centroid of the displayed vehicle (a coordinate system with the vehicle’s centroid as origin), so that when scans of a radar are not correctly transformed by &Eta; to the vehicle’s centroid, pt cannot be mapped on real world objects.
+
+There are two pieces of point cloud information that can be leveraged to interpret : 1. point cloud density and, 2. normal similarity. Such information can be used to construct an objective function &sigma; (also labelled as &fnof;(&chi;)), and the radar pose transform problem becomes a non-linear optimization issue. Here defines an objective function &fnof;(&chi;), in order to derive optimal &Eta;, we attempt to 
+
+<center>
+min<sub>&Eta;</sub>  &fnof;(&chi;)
+</center>
+
+<br></br>
+
+![alt text](readme_img/algo_explained.png "algo_explained")
+
+### Operation Limitations and Tips
+
+1. Walls/features should not be coarse as when point clouds cluster by neighbour distance, points scattered on coarse walls are always distant from each other and this might result in alignment failure.
+
+2. Vehicle  environment should be asymetrical. This algo attempts to align rotation angle first, and in a symetrical environment, there exist multiple angles that enable correct point cloud mapping.
+
+3. Recorded data should be neither long nor short of robot movement time, and movement should at least include vihecle itself rotation.
 
 ## A simple method for finding the extrinsic calibration between a 3D lidar and a 6-dof pose sensor
 
